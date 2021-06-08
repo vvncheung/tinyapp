@@ -9,12 +9,11 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+app.use(express.urlencoded({extented: true}));
+
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({extended: true}));
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
@@ -40,20 +39,22 @@ app.get("/u/:shortURL", (req, res) => {
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);
   const shortURL = generateRandomString();
   const longURL = req.body.longURL;
   urlDatabase[shortURL] = longURL;
-  console.log(urlDatabase)
   res.redirect(`/urls/${shortURL}`);
 });
 
 const generateRandomString = function() {
+  //let key = Math.random().toString(36).substr(2, 8);
   let key = "";
   let char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
 
+  
   for (let i = 0; i < 6; i++) {
     key += char[Math.floor(Math.random() * char.length)];
   }
   return key;
 };
+
+
