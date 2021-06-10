@@ -1,7 +1,9 @@
 const express = require("express");
 const cookieParser = require('cookie-parser');
 const app = express();
-const PORT = 8080; // default port 8080
+const PORT = 8080;
+// const bcrypt = require('bcrypt');
+// const saltRounds = 10;
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({extended: true}));
@@ -21,12 +23,35 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
+// helper function: ID generator
+const generateRandomID = function() {
+  let key = "";
+  let char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
+  for (let i = 0; i < 6; i++) {
+    key += char[Math.floor(Math.random() * char.length)];
+  }
+  return key;
+};
 
-// remove before submitting
-// allows to view data in browser
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
+// helper function: checks if email given already exists in database "users"
+const isEmailExists = function(email) {
+  for (let userID of Object.keys(users)) {
+    if (email === users[userID]['email']) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// helper function: get userID by email
+const getUserIDByEmail = function(email) {
+  for (let userID of Object.keys(users)) {
+    if (email === users[userID]['email']) {
+      return userID;
+    }
+  }
+  return false;
+};
 
 // page for users to create new tiny link
 // must be above route for /urls/:shortURL,
@@ -73,50 +98,19 @@ app.get("/u/:shortURL", (req, res) => {
 
 // shows confirmation after adding new url
 app.post("/urls", (req, res) => {
-  const shortURL = generateRandomString();
+  const shortURL = generateRandomID();
   const longURL = req.body.longURL;
   urlDatabase[shortURL] = longURL;
   res.redirect(`/urls/${shortURL}`);
 });
 
-// helper function: ID generator
-const generateRandomString = function() {
-  //let key = Math.random().toString(36).substr(2, 8);
-  let key = "";
-  let char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-  for (let i = 0; i < 6; i++) {
-    key += char[Math.floor(Math.random() * char.length)];
-  }
-  return key;
-};
-
-// helper function: checks if email given already exists in database "users"
-const isEmailExists = function(email) {
-  for (let userID of Object.keys(users)) {
-    if (email === users[userID]['email']) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// helper function: get userID by email
-const getUserIDByEmail = function(email) {
-  for (let userID of Object.keys(users)) {
-    if (email === users[userID]['email']) {
-      return userID;
-    }
-  }
-  return false;
-};
-
-// deletes :shortURL entry from database
+// deletes shortURL from database
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect(`/urls`);
 });
 
-//
+// adds new long URL to the database with the associated shortURL
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = req.body.longURL;
@@ -150,7 +144,7 @@ app.post("/login", (req, res) => {
   // if user with email is located, but password does not match
   if (isEmailExists(email)) {
     userID = getUserIDByEmail(email);
-    if (password !== users[userID]['password']) {
+    if (password !== users[userID]['password']) { //bcrypt.compareSync(password, users[userID]['password'])
       return res.status(403).send("Whoops! Please try the password.");
     }
   }
@@ -175,24 +169,28 @@ app.get("/register", (req, res) => {
   res.render("register", templateVars);
 });
 
-// allows user to input data to register page
-// if email or password fields are empty, returns 404
-// if email is duplicate, returns 404
-// else, creates new account
+// allows user to create new account
+// salts and hashes password
+// sets cookies for user and adds info to database
 app.post("/register", (req, res) => {
-  const userID = generateRandomString();
+  const userID = generateRandomID();
   const email = req.body.email;
   const password = req.body.password;
 
   if (!email || !password) {
-    return res.status(400).send("Whoops! Please try again.");
+    return res.status(400).send("Whoops! Please provide your email and password.");
   }
   if (isEmailExists(email)) {
-    return res.status(400).send("Whoops! Please try again.");
+    return res.status(400).send("Sorry, an account already exists for this email.");
   }
 
-  users[userID] = { "id": userID, "email": email, "password": password };
-  console.log(users);
+  users[userID] = {
+    id: userID,
+    email,
+    password,
+    // add bcrypt.hashSync(password, saltRounds); to password: 
+  };
+
   res.cookie('user_id', userID);
   res.redirect("/urls");
 });
