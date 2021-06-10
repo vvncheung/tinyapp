@@ -16,7 +16,7 @@ const urlDatabase = {
 };
 
 // database of users
-const users = {};
+const users = { };
 
 // server ON
 app.listen(PORT, () => {
@@ -53,6 +53,21 @@ const getUserIDByEmail = function(email) {
   return false;
 };
 
+// helper function: returns URLs unique to creator (userID)
+const urlsForUser = function(id) {
+  let urlList = { };
+  console.log('function id', id)
+  console.log('urlDatabase', urlDatabase)
+  for (let shortURL in urlDatabase) {
+    console.log('function shortURL', shortURL)
+    if (urlDatabase[shortURL]['userID'] === id) {
+      console.log('matches ID', urlDatabase[shortURL]['userID'])
+      urlList[shortURL] = {...urlDatabase[shortURL]};
+    }
+  }
+  return urlList;
+};
+
 // page for users to create new tiny link
 // must be above route for /urls/:shortURL,
 // otherwise express will believe that urls_new is a new route parameter
@@ -70,9 +85,14 @@ app.get("/urls/new", (req, res) => {
 
 // shows all URLs in database, basically home page if logged in
 app.get("/urls", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const userID = req.cookies["user_id"];
+  if (!userID) {
+    return res.redirect("/notLoggedIn");
+  }
+  const user = users[userID];
+  const userUrls = urlsForUser(user.id);
   const templateVars = {
-    urls: urlDatabase,
+    urls: userUrls,
     user,
   };
   res.render("urls_index", templateVars);
@@ -80,11 +100,20 @@ app.get("/urls", (req, res) => {
 
 // shows edit page for :shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const userID = req.cookies["user_id"];
+
+  if (!userID) {
+    return res.redirect("/notLoggedIn");
+  }
+
+  if (userID !== urlDatabase[req.params.shortURL]['userID']) {
+    return res.redirect("/errorPage");
+  }
+
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]['longURL'],
-    user,
+    user: urlDatabase[req.params.shortURL]['userID']
   };
   res.render("urls_show", templateVars);
 });
@@ -95,47 +124,56 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
-// shows confirmation after adding new url
+
+// edits longURL
+app.post("/urls/:shortURL", (req, res) => {
+  console.log("/urls/:shortURL");
+  const userID = req.cookies["user_id"];
+  const user = users[userID];
+  const shortURL = req.params.shortURL;
+  let longURL = req.body.longURL;
+  urlDatabase[shortURL] = { 'longURL': longURL, 'userID': user.id };
+  res.redirect(`/urls/${shortURL}`);
+});
+
+// adds new long URL to the database with the associated shortURL
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomID();
+  const userID = req.cookies["user_id"];
+  const user = users[userID];
   let longURL = req.body.longURL;
-  // if (!longURL.includes('https://') || !longURL.includes('http://')) {
-  //   longURL = 'https://' + longURL;
-  // }
-  urlDatabase[shortURL] = {'longURL' : longURL };
+  urlDatabase[shortURL] = {'longURL' : longURL, 'userID': user.id  };
   res.redirect(`/urls/${shortURL}`);
 });
 
 // deletes shortURL from database
 app.post("/urls/:shortURL/delete", (req, res) => {
+  const userID = req.cookies["user_id"];
+  
+  if (!userID) {
+    return res.redirect("/notLoggedIn");
+  }
+
+  if (userID !== urlDatabase[req.params.shortURL]['userID']) {
+    return res.redirect("/errorPage");
+  }
+
   delete urlDatabase[req.params.shortURL];
   res.redirect(`/urls`);
 });
 
-// adds new long URL to the database with the associated shortURL
-app.post("/urls/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-  let longURL = req.body.longURL;
-  // if (!longURL.includes('https://') || !longURL.includes('http://')) {
-  //   longURL = 'https://' + longURL;
-  // }
-  urlDatabase[shortURL] = { 'longURL': longURL };
-  res.redirect(`/urls/${shortURL}`);
-});
-
-//
-app.get("/urls/:shortURL", (req, res) => {
-  const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL]['longURL'];
-  const user = users[req.cookies["user_id"]];
-  const templateVars = {
-    shortURL,
-    longURL,
-    user
-  };
-  console.log(templateVars)
-  res.render("urls_show", templateVars);
-});
+// duplicate?
+// app.get("/urls/:shortURL", (req, res) => {
+//   const shortURL = req.params.shortURL;
+//   const longURL = urlDatabase[shortURL]['longURL'];
+//   const user = users[req.cookies["user_id"]];
+//   const templateVars = {
+//     shortURL,
+//     longURL,
+//     user
+//   };
+//   res.render("urls_show", templateVars);
+// });
 
 // allows user to login
 app.post("/login", (req, res) => {
@@ -212,7 +250,25 @@ app.get("/login", (req, res) => {
 
 // redirects '/' to the urls list
 app.get("/", (req, res) => {
-  res.redirect('/login');
+  res.redirect('/notLoggedIn');
+});
+
+// shows not logged in page
+app.get("/notLoggedIn", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+  const templateVars = {
+    user,
+  };
+  res.render("notLoggedIn", templateVars);
+});
+
+// shows incorrect user page
+app.get("/errorPage", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+  const templateVars = {
+    user,
+  };
+  res.render("errorPage", templateVars);
 });
 
 
