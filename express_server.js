@@ -2,8 +2,8 @@ const express = require("express");
 const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = 8080;
-// const bcrypt = require('bcrypt');
-// const saltRounds = 10;
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({extended: true}));
@@ -183,13 +183,15 @@ app.post("/login", (req, res) => {
 
   // if user with email cannot be found
   if (!isEmailExists(email)) {
-    return res.status(403).send("Whoops! Please try again.");
+    return res.status(403).send("Whoops! Something doesn't match. Please try again.");
   }
   // if user with email is located, but password does not match
   if (isEmailExists(email)) {
     userID = getUserIDByEmail(email);
-    if (password !== users[userID]['password']) { //bcrypt.compareSync(password, users[userID]['password'])
-      return res.status(403).send("Whoops! Please try the password.");
+    if (!bcrypt.compareSync(password, users[userID]['password'])) {
+      console.log(password)
+      console.log(users[userID]['password'])
+      return res.status(403).send("Whoops! Something doesn't match. Please try again.");
     }
   }
 
@@ -231,10 +233,10 @@ app.post("/register", (req, res) => {
   users[userID] = {
     id: userID,
     email,
-    password,
-    // add bcrypt.hashSync(password, saltRounds); to password: 
+    password: bcrypt.hashSync(password, saltRounds),
   };
 
+  console.log(users)
   res.cookie('user_id', userID);
   res.redirect("/urls");
 });
