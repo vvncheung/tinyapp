@@ -17,9 +17,11 @@
         <button class="btn btn-outline-dark my-2 my-sm-0" type="Logout" style="margin-left: 20px;">Logout</button>
       </form>
       <% } else { %>
-        <form class="form-inline" action="/login" method="POST">
-          <input class="form-control mr-sm-2" type="text" name="username" placeholder="Username" aria-label="Submit">
-          <button class="btn btn-outline-dark my-2 my-sm-0" type="submit" tyle="margin-left: 20px;">Submit</button>
+        <form class="form-inline" action="register" method="GET">
+          <button class="btn btn-outline-dark my-2 my-sm-0" type="register" style="margin-left: 20px;">Register</button>  
+        </form>
+        <form class="form-inline" action="login" method="GET">
+          <button class="btn btn-outline-dark my-2 my-sm-0" type="login" style="margin-left: 20px;">Login</button>
         </form>
         <% } %>
   </nav>

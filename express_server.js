@@ -82,10 +82,20 @@ const generateRandomString = function() {
 };
 
 // helper function: checks if email given already exists in database "users"
-const isEmailDuplicate = function(email) {
-  for (let userID in users) {
-    if (email === users[userID][email]) {
+const isEmailExists = function(email) {
+  for (let userID of Object.keys(users)) {
+    if (email === users[userID]['email']) {
       return true;
+    }
+  }
+  return false;
+};
+
+// helper function: get userID by email
+const getUserIDByEmail = function(email) {
+  for (let userID of Object.keys(users)) {
+    if (email === users[userID]['email']) {
+      return userID;
     }
   }
   return false;
@@ -118,9 +128,25 @@ app.get("/urls/:shortURL", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
-// shows login page
+// allows user to login
 app.post("/login", (req, res) => {
-  res.cookie('username', req.body.username);
+  const email = req.body.email;
+  const password = req.body.password;
+  let userID = "";
+
+  // if user with email cannot be found
+  if (!isEmailExists(email)) {
+    return res.status(403).send("Whoops! Please try again.");
+  }
+  // if user with email is located, but password does not match
+  if (isEmailExists(email)) {
+    userID = getUserIDByEmail(email);
+    if (password !== users[userID]['password']) {
+      return res.status(403).send("Whoops! Please try the password.");
+    }
+  }
+
+  res.cookie('user_id', userID);
   res.redirect("/urls");
 });
 
@@ -152,13 +178,23 @@ app.post("/register", (req, res) => {
   if (!email || !password) {
     return res.status(400).send("Whoops! Please try again.");
   }
-  if (!isEmailDuplicate(email)) {
+  if (isEmailExists(email)) {
     return res.status(400).send("Whoops! Please try again.");
   }
- 
+
   users[userID] = { "id": userID, "email": email, "password": password };
+  console.log(users)
   res.cookie('user_id', userID);
   res.redirect("/urls");
+});
+
+// shows login page
+app.get("/login", (req, res) => {
+  const user = users[req.cookies["user_id"]];
+  const templateVars = {
+    user,
+  };
+  res.render("login", templateVars);
 });
 
 
