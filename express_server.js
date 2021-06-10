@@ -1,6 +1,7 @@
 const express = require("express");
 const cookieParser = require('cookie-parser');
 const app = express();
+const morgan = require(morgan);
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
@@ -9,8 +10,8 @@ app.use(cookieParser());
 
 // database of URLs
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: { longURL: "https://www.tsn.ca", userID: "aJ48lW" },
+  i3BoGr: { longURL: "https://www.google.ca", userID: "aJ48lW" }
 };
 
 // database of users
@@ -26,14 +27,19 @@ app.get("/urls.json", (req, res) => {
 });
 
 // page for users to create new tiny link
-// must be above route for /urls/:shortURL, 
+// must be above route for /urls/:shortURL,
 // otherwise express will believe that urls_new is a new route parameter
 app.get("/urls/new", (req, res) => {
   const user = users[req.cookies["user_id"]];
-  const templateVars = {
-    user,
-  };
-  res.render("urls_new", templateVars);
+  if (user) {
+    const templateVars = {
+      user,
+    };
+    res.render("urls_new", templateVars);
+  } else {
+    res.redirect("/login");
+  }
+
 });
 
 // shows all URLs in database, basically home page if logged in
@@ -49,8 +55,8 @@ app.get("/urls", (req, res) => {
 // shows edit page for :shortURL
 app.get("/urls/:shortURL", (req, res) => {
   const user = users[req.cookies["user_id"]];
-  const templateVars = { 
-    shortURL: req.params.shortURL, 
+  const templateVars = {
+    shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL],
     user,
   };
@@ -63,6 +69,7 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
+// shows confirmation after adding new url
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomString();
   const longURL = req.body.longURL;
@@ -107,7 +114,7 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect(`/urls`);
 });
 
-// 
+//
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = req.body.longURL;
@@ -115,7 +122,7 @@ app.post("/urls/:shortURL", (req, res) => {
   res.redirect(`/urls/${shortURL}`);
 });
 
-// 
+//
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
   const longURL = urlDatabase[shortURL];
@@ -183,7 +190,7 @@ app.post("/register", (req, res) => {
   }
 
   users[userID] = { "id": userID, "email": email, "password": password };
-  console.log(users)
+  console.log(users);
   res.cookie('user_id', userID);
   res.redirect("/urls");
 });
