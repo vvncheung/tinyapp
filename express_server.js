@@ -18,7 +18,7 @@ const urlDatabase = {
 // database of users
 const users = {};
 
-// turns on server
+// server ON
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
@@ -66,7 +66,6 @@ app.get("/urls/new", (req, res) => {
   } else {
     res.redirect("/login");
   }
-
 });
 
 // shows all URLs in database, basically home page if logged in
@@ -84,7 +83,7 @@ app.get("/urls/:shortURL", (req, res) => {
   const user = users[req.cookies["user_id"]];
   const templateVars = {
     shortURL: req.params.shortURL,
-    longURL: urlDatabase[req.params.shortURL],
+    longURL: urlDatabase[req.params.shortURL]['longURL'],
     user,
   };
   res.render("urls_show", templateVars);
@@ -92,15 +91,18 @@ app.get("/urls/:shortURL", (req, res) => {
 
 // redirects from tiny link to long URL associated with :shortURL
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  const longURL = urlDatabase[req.params.shortURL]['longURL'];
   res.redirect(longURL);
 });
 
 // shows confirmation after adding new url
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomID();
-  const longURL = req.body.longURL;
-  urlDatabase[shortURL] = longURL;
+  let longURL = req.body.longURL;
+  // if (!longURL.includes('https://') || !longURL.includes('http://')) {
+  //   longURL = 'https://' + longURL;
+  // }
+  urlDatabase[shortURL] = {'longURL' : longURL };
   res.redirect(`/urls/${shortURL}`);
 });
 
@@ -113,21 +115,25 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 // adds new long URL to the database with the associated shortURL
 app.post("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = req.body.longURL;
-  urlDatabase[shortURL] = longURL;
+  let longURL = req.body.longURL;
+  // if (!longURL.includes('https://') || !longURL.includes('http://')) {
+  //   longURL = 'https://' + longURL;
+  // }
+  urlDatabase[shortURL] = { 'longURL': longURL };
   res.redirect(`/urls/${shortURL}`);
 });
 
 //
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
-  const longURL = urlDatabase[shortURL];
+  const longURL = urlDatabase[shortURL]['longURL'];
   const user = users[req.cookies["user_id"]];
   const templateVars = {
     shortURL,
     longURL,
     user
   };
+  console.log(templateVars)
   res.render("urls_show", templateVars);
 });
 
@@ -206,7 +212,7 @@ app.get("/login", (req, res) => {
 
 // redirects '/' to the urls list
 app.get("/", (req, res) => {
-  res.redirect('/urls');
+  res.redirect('/login');
 });
 
 
