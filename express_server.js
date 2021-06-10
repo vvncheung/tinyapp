@@ -1,7 +1,6 @@
 const express = require("express");
 const cookieParser = require('cookie-parser');
 const app = express();
-const morgan = require(morgan);
 const PORT = 8080; // default port 8080
 
 app.set("view engine", "ejs");
@@ -22,6 +21,9 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
+
+// remove before submitting
+// allows to view data in browser
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
 });
@@ -204,5 +206,9 @@ app.get("/login", (req, res) => {
   res.render("login", templateVars);
 });
 
+// redirects '/' to the urls list
+app.get("/", (req, res) => {
+  res.redirect('/urls');
+});
 
 
