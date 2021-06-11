@@ -25,7 +25,7 @@ const getUserIDByEmail = function(email, users) {
       return userID;
     }
   }
-  return false;
+  return undefined;
 };
 
 // helper function: returns URLs unique to creator (userID)

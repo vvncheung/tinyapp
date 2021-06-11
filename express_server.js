@@ -87,7 +87,6 @@ app.get("/u/:shortURL", (req, res) => {
 
 // edits longURL
 app.post("/urls/:shortURL", (req, res) => {
-  console.log("/urls/:shortURL");
   const userID = req.session["user_id"];
   const user = users[userID];
   const shortURL = req.params.shortURL;
@@ -122,19 +121,6 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect(`/urls`);
 });
 
-// duplicate?
-// app.get("/urls/:shortURL", (req, res) => {
-//   const shortURL = req.params.shortURL;
-//   const longURL = urlDatabase[shortURL]['longURL'];
-//   const user = users[req.cookies["user_id"]];
-//   const templateVars = {
-//     shortURL,
-//     longURL,
-//     user
-//   };
-//   res.render("urls_show", templateVars);
-// });
-
 // allows user to login
 app.post("/login", (req, res) => {
   const email = req.body.email;
@@ -153,8 +139,6 @@ app.post("/login", (req, res) => {
   if (ifEmailExists(email, users)) {
     userID = getUserIDByEmail(email, users);
     if (!bcrypt.compareSync(password, users[userID]['password'])) {
-      console.log(password)
-      console.log(users[userID]['password'])
       return res.status(403).send("Whoops! Something doesn't match. Please try again.");
     }
   }
@@ -172,6 +156,9 @@ app.post("/logout", (req, res) => {
 // shows registration page
 app.get("/register", (req, res) => {
   const user = users[req.session["user_id"]];
+  if (user) {
+    return res.redirect("/urls");
+  }
   const templateVars = {
     user,
   };
@@ -185,21 +172,17 @@ app.post("/register", (req, res) => {
   const userID = generateRandomID();
   const email = req.body.email;
   const password = req.body.password;
-
   if (!email || !password) {
     return res.status(400).send("Whoops! Please provide your email and password.");
   }
   if (ifEmailExists(email, users)) {
     return res.status(400).send("Sorry, an account already exists for this email.");
   }
-
   users[userID] = {
     id: userID,
     email,
     password: bcrypt.hashSync(password, saltRounds),
   };
-
-  console.log(users)
   req.session['user_id'] = userID;
   res.redirect("/urls");
 });
@@ -207,6 +190,9 @@ app.post("/register", (req, res) => {
 // shows login page
 app.get("/login", (req, res) => {
   const user = users[req.session["user_id"]];
+  if (user) {
+    return res.redirect("/urls");
+  }
   const templateVars = {
     user,
   };
