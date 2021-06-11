@@ -10,7 +10,7 @@ Store all your tiny links in Tiny App! 📌
 !["Enter your URL, hit submit, and you're done! ✨"](https://github.com/vvncheung/tinyapp/blob/master/docs/add-link.png?raw=true)
 Enter your URL, hit submit, and you're done (but only with an account, of course)! ✨
 
-!["Safe and secure, your links are only available accessible if you've logged in. All of your tiny links are for your eyes only. 🔑"](https://github.com/vvncheung/tinyapp/blob/master/docs/default-page.png?raw=true) 
+!["Safe and secure, your links are only available accessible if you've logged in. All of your tiny links are for your eyes only. 🔑"](https://github.com/vvncheung/tinyapp/blob/master/docs/notlogged-page.png?raw=true) 
 Safe and secure, your links are only available accessible if you've logged in. All of your tiny links are for your eyes only. 🔑
 
 If a user tries to perform certain actions while not logged into an existing account, they will be redirected to either login or register.
