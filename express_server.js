@@ -1,13 +1,21 @@
 const express = require("express");
-const cookieParser = require('cookie-parser');
 const app = express();
 const PORT = 8080;
+const { generateRandomID, ifEmailExists, getUserIDByEmail, urlsForUser } = require('./helpers.js');
+const cookieSession = require('cookie-session');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
 app.set("view engine", "ejs");
 app.use(express.urlencoded({extended: true}));
-app.use(cookieParser());
+
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2'],
+
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 
 // database of URLs
 const urlDatabase = {
@@ -23,56 +31,11 @@ app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
 
-// helper function: ID generator
-const generateRandomID = function() {
-  let key = "";
-  let char = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-  for (let i = 0; i < 6; i++) {
-    key += char[Math.floor(Math.random() * char.length)];
-  }
-  return key;
-};
-
-// helper function: checks if email given already exists in database "users"
-const isEmailExists = function(email) {
-  for (let userID of Object.keys(users)) {
-    if (email === users[userID]['email']) {
-      return true;
-    }
-  }
-  return false;
-};
-
-// helper function: get userID by email
-const getUserIDByEmail = function(email) {
-  for (let userID of Object.keys(users)) {
-    if (email === users[userID]['email']) {
-      return userID;
-    }
-  }
-  return false;
-};
-
-// helper function: returns URLs unique to creator (userID)
-const urlsForUser = function(id) {
-  let urlList = { };
-  console.log('function id', id)
-  console.log('urlDatabase', urlDatabase)
-  for (let shortURL in urlDatabase) {
-    console.log('function shortURL', shortURL)
-    if (urlDatabase[shortURL]['userID'] === id) {
-      console.log('matches ID', urlDatabase[shortURL]['userID'])
-      urlList[shortURL] = {...urlDatabase[shortURL]};
-    }
-  }
-  return urlList;
-};
-
 // page for users to create new tiny link
 // must be above route for /urls/:shortURL,
 // otherwise express will believe that urls_new is a new route parameter
 app.get("/urls/new", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   if (user) {
     const templateVars = {
       user,
@@ -85,12 +48,12 @@ app.get("/urls/new", (req, res) => {
 
 // shows all URLs in database, basically home page if logged in
 app.get("/urls", (req, res) => {
-  const userID = req.cookies["user_id"];
+  const userID = req.session["user_id"];
   if (!userID) {
     return res.redirect("/notLoggedIn");
   }
   const user = users[userID];
-  const userUrls = urlsForUser(user.id);
+  const userUrls = urlsForUser(user.id, urlDatabase);
   const templateVars = {
     urls: userUrls,
     user,
@@ -100,16 +63,13 @@ app.get("/urls", (req, res) => {
 
 // shows edit page for :shortURL
 app.get("/urls/:shortURL", (req, res) => {
-  const userID = req.cookies["user_id"];
-
+  const userID = req.session["user_id"];
   if (!userID) {
     return res.redirect("/notLoggedIn");
   }
-
   if (userID !== urlDatabase[req.params.shortURL]['userID']) {
     return res.redirect("/errorPage");
   }
-
   const templateVars = {
     shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL]['longURL'],
@@ -128,7 +88,7 @@ app.get("/u/:shortURL", (req, res) => {
 // edits longURL
 app.post("/urls/:shortURL", (req, res) => {
   console.log("/urls/:shortURL");
-  const userID = req.cookies["user_id"];
+  const userID = req.session["user_id"];
   const user = users[userID];
   const shortURL = req.params.shortURL;
   let longURL = req.body.longURL;
@@ -139,7 +99,7 @@ app.post("/urls/:shortURL", (req, res) => {
 // adds new long URL to the database with the associated shortURL
 app.post("/urls", (req, res) => {
   const shortURL = generateRandomID();
-  const userID = req.cookies["user_id"];
+  const userID = req.session["user_id"];
   const user = users[userID];
   let longURL = req.body.longURL;
   urlDatabase[shortURL] = {'longURL' : longURL, 'userID': user.id  };
@@ -148,7 +108,7 @@ app.post("/urls", (req, res) => {
 
 // deletes shortURL from database
 app.post("/urls/:shortURL/delete", (req, res) => {
-  const userID = req.cookies["user_id"];
+  const userID = req.session["user_id"];
   
   if (!userID) {
     return res.redirect("/notLoggedIn");
@@ -182,33 +142,36 @@ app.post("/login", (req, res) => {
   let userID = "";
 
   // if user with email cannot be found
-  if (!isEmailExists(email)) {
+  if (!ifEmailExists(email, users)) {
     return res.status(403).send("Whoops! Something doesn't match. Please try again.");
   }
+  // if either email or password field(s) is/are empty
+  if (!email || !password) {
+    return res.status(400).send("Whoops! Please provide your email and password.");
+  }
   // if user with email is located, but password does not match
-  if (isEmailExists(email)) {
-    userID = getUserIDByEmail(email);
+  if (ifEmailExists(email, users)) {
+    userID = getUserIDByEmail(email, users);
     if (!bcrypt.compareSync(password, users[userID]['password'])) {
       console.log(password)
       console.log(users[userID]['password'])
       return res.status(403).send("Whoops! Something doesn't match. Please try again.");
     }
   }
-
-  res.cookie('user_id', userID);
+  req.session['user_id'] = userID;
   res.redirect("/urls");
 });
 
 // logs user out
 app.post("/logout", (req, res) => {
-  res.clearCookie('user_id');
+  req.session['user_id'] = null;
   res.redirect("/urls");
 });
 
 
 // shows registration page
 app.get("/register", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   const templateVars = {
     user,
   };
@@ -226,7 +189,7 @@ app.post("/register", (req, res) => {
   if (!email || !password) {
     return res.status(400).send("Whoops! Please provide your email and password.");
   }
-  if (isEmailExists(email)) {
+  if (ifEmailExists(email, users)) {
     return res.status(400).send("Sorry, an account already exists for this email.");
   }
 
@@ -237,13 +200,13 @@ app.post("/register", (req, res) => {
   };
 
   console.log(users)
-  res.cookie('user_id', userID);
+  req.session['user_id'] = userID;
   res.redirect("/urls");
 });
 
 // shows login page
 app.get("/login", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   const templateVars = {
     user,
   };
@@ -257,7 +220,7 @@ app.get("/", (req, res) => {
 
 // shows not logged in page
 app.get("/notLoggedIn", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   const templateVars = {
     user,
   };
@@ -266,7 +229,7 @@ app.get("/notLoggedIn", (req, res) => {
 
 // shows incorrect user page
 app.get("/errorPage", (req, res) => {
-  const user = users[req.cookies["user_id"]];
+  const user = users[req.session["user_id"]];
   const templateVars = {
     user,
   };
